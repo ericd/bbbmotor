@@ -14,7 +14,6 @@ class Configuration
         @map[k.strip.downcase.to_sym] = v.strip
       end
     end
-    p @map
   end
 
   ##
