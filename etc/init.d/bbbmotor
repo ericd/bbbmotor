@@ -23,7 +23,7 @@ case "$1" in
     for num in "$DIRECTION" "$PULSE" ; do
       dir="${GPIO}/gpio${num}"
       if [ ! -d "$dir" ] ; then
-        echo "$num" > "${dir}/export"
+        echo "$num" > "${GPIO}/export"
       fi
       echo low > "${dir}/direction"
       for file in direction value ; do
