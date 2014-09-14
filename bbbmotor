@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby -w
+
+class Configuration
+  CONFIG_FILE = '/etc/bbbmotor'
+  GPIO_TEMPLATE = '/sys/devices/virtual/gpio/gpio%d/value'
+
+  ##
+  # Parse configuration in file +conf_file_name+ or system default.
+  def initialize(conf_file_name = CONFIG_FILE)
+    @map = { degrees_per_step: 1.8, rpm: 3, steps_per_revolution: 200 }
+    File.open(config) do |file|
+      file.each_line do |line|
+        k, v = line.split('=')
+        @map[k.trim.lowercase.to_s] = v.trim
+      end
+    end
+  end
+
+  ##
+  # Returns a path to the direction GPIO control file.
+  def direction
+    sprintf(GPIO_TEMPLATE, @map[:direction])
+  end
+
+  ##
+  # Returns a path to the pulse GPIO control file.
+  def pulse
+    sprintf(GPIO_TEMPLATE, @map[:pulse])
+  end
+
+  ##
+  # Returns a configuration value or throws +NoMethodError+
+  # if the configuration value is unknown.
+  def method_missing(method, *args, &block)
+    throw NoMethodError(method, args) unless @map.has_key?(method)
+    @map[method]
+  end
+end
+
+class BBBMotor
+  def initialize
+    @conf = Configuration.new
+    @direction = File.open(conf.direction)
+    @pulse = File.open(conf.pulse)
+  end
+
+  def degrees_to_steps(degrees)
+    (degrees / @conf.degrees_per_step).round
+  end
+
+  def step(clockwise)
+    @direction.puts(clockwise ? '1' : '0')
+    @pulse.puts('1')
+    sleep(@conf.rpm / @conf.steps_per_revolution)
+    @pulse.puts('0')
+  end
+
+  def rotate(degrees)
+    degrees_to_steps(degrees).times { step(degrees >= 0) }
+  end
+end
+
+unless (ARGV.length == 1)
+  STDERR.puts "usage: bbbmotor [-]DEGREES"
+  exit(1)
+end
+degrees = ARGV.shift.to_f
+
+motor = BBBMotor.new
+motor.rotate(degrees)
+exit(0)
+
