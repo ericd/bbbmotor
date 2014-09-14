@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby -w
+#!/usr/bin/env ruby
 
 class Configuration
   CONFIG_FILE = '/etc/bbbmotor'
@@ -8,12 +8,13 @@ class Configuration
   # Parse configuration in file +conf_file_name+ or system default.
   def initialize(conf_file_name = CONFIG_FILE)
     @map = { degrees_per_step: 1.8, rpm: 3, steps_per_revolution: 200 }
-    File.open(config) do |file|
+    File.open(conf_file_name) do |file|
       file.each_line do |line|
         k, v = line.split('=')
-        @map[k.trim.lowercase.to_s] = v.trim
+        @map[k.strip.downcase.to_sym] = v.strip
       end
     end
+    p @map
   end
 
   ##
@@ -32,7 +33,7 @@ class Configuration
   # Returns a configuration value or throws +NoMethodError+
   # if the configuration value is unknown.
   def method_missing(method, *args, &block)
-    throw NoMethodError(method, args) unless @map.has_key?(method)
+    super(method) unless @map.has_key?(method)
     @map[method]
   end
 end
@@ -40,8 +41,8 @@ end
 class BBBMotor
   def initialize
     @conf = Configuration.new
-    @direction = File.open(conf.direction)
-    @pulse = File.open(conf.pulse)
+    @direction = File.open(@conf.direction, 'w')
+    @pulse = File.open(@conf.pulse, 'w')
   end
 
   def degrees_to_steps(degrees)
