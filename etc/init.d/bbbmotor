@@ -1,0 +1,43 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:          bbbmotor
+# Required-Start:    capemgr.sh
+# Required-Stop:
+# X-Start-Before:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Setup GPIO for bbbmotor
+# Description: Setup GPIO for bbbmotor.
+### END INIT INFO
+
+N=/etc/init.d/bbbmotor
+CONF=/etc/bbbmotor
+GPIO=/sys/class/gpio
+
+set -e
+
+case "$1" in
+  start)
+    . "$CONF"
+    for num in "$DIRECTION" "$PULSE" ; do
+      dir="${GPIO}/gpio${num}"
+      if [ ! -d "$dir" ] ; then
+        echo "$num" > "${GPIO}/export"
+      fi
+      echo low > "${dir}/direction"
+      for file in direction value ; do
+        chgrp daemon "${dir}/${file}"
+        chmod g+w "${dir}/${file}"
+      done
+    done
+	;;
+  stop|reload|restart|force-reload|status)
+	;;
+  *)
+	echo "Usage: $N {start|stop|restart|force-reload|status}" >&2
+	exit 1
+	;;
+esac
+
+exit 0
