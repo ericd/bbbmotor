@@ -6,8 +6,8 @@ class Configuration
 
   ##
   # Parse configuration in file +conf_file_name+ or system default.
-  def initialize(conf_file_name = CONFIG_FILE)
-    @map = { degrees_per_step: 1.8, rpm: 3, steps_per_revolution: 200 }
+  def initialize(defaults = {}, conf_file_name = CONFIG_FILE)
+    @map = { rpm: 20, steps_per_revolution: 200 }.merge(defaults)
     File.open(conf_file_name) do |file|
       file.each_line do |line|
         k, v = line.split('=')
@@ -39,35 +39,50 @@ class Configuration
 end
 
 class BBBMotor
-  def initialize
-    @conf = Configuration.new
+  def initialize(defaults = {})
+    @conf = Configuration.new(defaults)
     @direction = File.open(@conf.direction, 'w')
     @pulse = File.open(@conf.pulse, 'w')
   end
 
   def degrees_to_steps(degrees)
-    (degrees / @conf.degrees_per_step).round
+    degrees_per_step = 360 / @conf.steps_per_revolution.to_f
+    (degrees / degrees_per_step).round
   end
 
   def step(clockwise)
     @direction.puts(clockwise ? '1' : '0')
+    @direction.flush
+    half_sleep = ((60 / @conf.rpm.to_f) / @conf.steps_per_revolution.to_f) / 2
     @pulse.puts('1')
-    sleep(@conf.rpm / @conf.steps_per_revolution)
+    @pulse.flush
+    sleep(half_sleep)
     @pulse.puts('0')
+    @pulse.flush
+    sleep(half_sleep)
   end
 
   def rotate(degrees)
-    degrees_to_steps(degrees).times { step(degrees >= 0) }
+    degrees_to_steps(degrees.abs).times { step(degrees >= 0) }
+  end
+end
+
+# turn all --arg=val options into :arg => val hash entries
+defaults = {}
+ARGV.clone.each do |arg|
+  if (md = arg.match(/--([^=]+)=(.*)/))
+    defaults[md[1].to_sym] = md[2]
+    ARGV.delete(md[0])
   end
 end
 
 unless (ARGV.length == 1)
-  STDERR.puts "usage: bbbmotor [-]DEGREES"
+  STDERR.puts "usage: bbbmotor OPTIONS [-]DEGREES"
   exit(1)
 end
 degrees = ARGV.shift.to_f
 
-motor = BBBMotor.new
+motor = BBBMotor.new(defaults)
 motor.rotate(degrees)
 exit(0)
 
