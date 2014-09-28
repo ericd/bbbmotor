@@ -20,7 +20,7 @@ set -e
 case "$1" in
   start)
     . "$CONF"
-    for num in "$DIRECTION" "$PULSE" ; do
+    for num in "$DIRECTION" "$PULSE" "$ENABLE" ; do
       dir="${GPIO}/gpio${num}"
       if [ ! -d "$dir" ] ; then
         echo "$num" > "${GPIO}/export"
